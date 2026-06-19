@@ -174,13 +174,11 @@ body {
 .hero-badge {
     width: 72px; height: 72px;
     border-radius: var(--r-lg);
-    background: linear-gradient(135deg, var(--indigo), var(--violet));
     display: flex; align-items: center; justify-content: center;
-    color: white;
     box-shadow: 0 8px 32px rgba(99, 102, 241, 0.35);
     animation: pulseBadge 4s infinite ease-in-out;
 }
-.hero-badge svg { width: 36px; height: 36px; }
+.hero-logo-img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 
 @keyframes pulseBadge {
     0%, 100% { box-shadow: 0 8px 32px rgba(99, 102, 241, 0.35); transform: scale(1); }
@@ -527,9 +525,10 @@ body {
 .dash-brand {
     display: flex; align-items: center; gap: 12px;
 }
-.dash-logo {
-    width: 28px; height: 28px;
-    color: var(--indigo-light);
+.dash-logo-img {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    object-fit: cover;
 }
 .dash-brand h1 {
     font-size: 22px; font-weight: 800;
@@ -772,7 +771,20 @@ body {
     display: flex; align-items: center;
     justify-content: space-between;
     gap: 16px;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: all var(--dur-normal) var(--ease-out);
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+.user-card.fade-in {
+    animation: fadeUp 0.4s var(--ease-out) backwards;
+}
+.user-card.is-removing {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+    pointer-events: none;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
 }
 .user-card:hover {
     border-color: var(--border-default);

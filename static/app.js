@@ -514,6 +514,7 @@ async function fetchData() {
         state.unfollowers = data.unfollowers;
         state.whitelisted = data.whitelisted;
         state.inactive = data.inactive;
+        state.unfollowed = data.unfollowed;
 
         updateStats();
         renderList();
@@ -577,7 +578,13 @@ function renderList() {
     }
 
     hideEmptyState();
-    list.forEach(user => dom.usersGrid.appendChild(createUserCard(user)));
+    list.forEach((user, idx) => {
+        const card = createUserCard(user);
+        // Stagger animation
+        card.style.animationDelay = `${Math.min(idx * 0.03, 0.5)}s`;
+        card.classList.add('fade-in');
+        dom.usersGrid.appendChild(card);
+    });
 }
 
 function createUserCard(user) {
@@ -589,18 +596,18 @@ function createUserCard(user) {
     let actionsHtml;
     if (state.activeTab === 'unfollowers') {
         actionsHtml = `
-            <button class="action-btn btn-whitelist" title="Whitelist — keep following peacefully" onclick="handleAction('${user.username}','whitelist')">
+            <button class="action-btn btn-whitelist" title="Whitelist — keep following peacefully" onclick="handleAction('${user.username}','whitelist', this)">
                 <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             </button>
-            <button class="action-btn btn-inactive" title="Mark as inactive account" onclick="handleAction('${user.username}','inactive')">
+            <button class="action-btn btn-inactive" title="Mark as inactive account" onclick="handleAction('${user.username}','inactive', this)">
                 <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
             </button>
-            <button class="action-btn btn-unfollowed" title="Mark as just unfollowed" onclick="handleAction('${user.username}','unfollowed')">
+            <button class="action-btn btn-unfollowed" title="Mark as just unfollowed" onclick="handleAction('${user.username}','unfollowed', this)">
                 <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </button>`;
     } else {
         actionsHtml = `
-            <button class="action-btn btn-remove" title="Move back to Unfollowers" onclick="handleAction('${user.username}','remove')">
+            <button class="action-btn btn-remove" title="Move back to Unfollowers" onclick="handleAction('${user.username}','remove', this)">
                 <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>`;
     }
@@ -622,7 +629,17 @@ function createUserCard(user) {
 }
 
 // ---- Actions ----
-async function handleAction(username, action) {
+async function handleAction(username, action, btnElement) {
+    let card = null;
+    if (btnElement) {
+        card = btnElement.closest('.user-card');
+        if (card) {
+            // Fix height so grid doesn't collapse weirdly during animation
+            card.style.height = card.offsetHeight + 'px';
+            card.classList.add('is-removing');
+        }
+    }
+
     try {
         const res = await fetch('/api/action', {
             method: 'POST',
@@ -631,9 +648,20 @@ async function handleAction(username, action) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Action failed');
+        
+        // Show subtle notification
         showToast(data.message, 'success');
-        fetchData();
+        
+        if (card) {
+            // Wait for animation to finish before fetching new state
+            setTimeout(() => {
+                fetchData();
+            }, 300);
+        } else {
+            fetchData();
+        }
     } catch (err) {
+        if (card) card.classList.remove('is-removing');
         showToast(err.message, 'error');
     }
 }

@@ -242,11 +242,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         if path == '/' or path == '/index.html':
             self.serve_static(os.path.join(STATIC_DIR, 'index.html'), 'text/html')
             return
-        elif path == '/style.css':
-            self.serve_static(os.path.join(STATIC_DIR, 'style.css'), 'text/css')
-            return
-        elif path == '/app.js':
-            self.serve_static(os.path.join(STATIC_DIR, 'app.js'), 'application/javascript')
+        
+        # Serve any file requested from the static directory
+        file_path = os.path.abspath(os.path.join(STATIC_DIR, path.lstrip('/')))
+        if file_path.startswith(STATIC_DIR) and os.path.exists(file_path) and os.path.isfile(file_path):
+            content_type, _ = mimetypes.guess_type(file_path)
+            self.serve_static(file_path, content_type or 'application/octet-stream')
             return
 
         self.send_error(404, "Not Found")
@@ -282,7 +283,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 elif action == 'inactive':
                     status["inactive"].append(username)
                 elif action == 'unfollowed':
-                    status["unfollowed"].append(username)
+                    status.setdefault("unfollowed", []).append(username)
 
                 save_status(status)
                 self.send_json({"success": True, "message": f"User {username} marked as {action}"})
@@ -409,7 +410,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": str(e)}, 500)
             return
 
-        # API: Clear endpoint
+                # API: Clear endpoint
         if path == '/api/clear':
             try:
                 for filename in os.listdir(CONNECTIONS_DIR):
@@ -417,9 +418,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                     if os.path.isfile(file_path) and filename.endswith('.json'):
                         os.remove(file_path)
                 
-                # Optionally keep or reset status.json
-                # We will keep status.json to let status carry over if they reload the same usernames later
-                self.send_json({"success": True, "message": "Connections folder cleared"})
+                # Delete status.json
+                if os.path.exists(STATUS_FILE):
+                    os.remove(STATUS_FILE)
+
+                self.send_json({"success": True, "message": "All data and status cleared"})
             except Exception as e:
                 self.send_json({"error": str(e)}, 500)
             return

@@ -1,5 +1,9 @@
 # 🕵️‍♂️ UnfollowerDetector
 
+<p align="center">
+  <img src="static/logo.svg" alt="UnfollowerDetector Logo" width="128" height="128" style="border-radius: 24px;">
+</p>
+
 **UnfollowerDetector** is a beautiful, local Python web app that helps you find Instagram accounts you follow that do **not** follow you back.
 
 It works with your official Instagram data export, compares your followers and following lists, and shows a clean, interactive dashboard of non-mutual follows with clickable profile links.
@@ -16,6 +20,7 @@ It works with your official Instagram data export, compares your followers and f
 * ⭐ **Whitelisted**: Keep track of celebrities, brands, or friends you want to follow regardless.
 * 💤 **Inactive**: Mark abandoned accounts so they don't clutter your main list.
 * ✅ **Unfollowed**: Keep a record of users you've manually unfollowed.
+* 🗑️ **Clear Data**: Securely wipe all loaded data and statuses from your machine at any time.
 * 🔐 **No Login Required**: No Instagram password required, completely safe from bans.
 
 ---
