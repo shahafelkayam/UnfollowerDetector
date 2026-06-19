@@ -1,0 +1,7 @@
+# Instagram Data
+connections/
+status.json
+
+# Python
+__pycache__/
+*.pyc
