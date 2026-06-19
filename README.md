@@ -76,7 +76,7 @@ http://127.0.0.1:8080
 
 To use the app, download your Instagram information:
 
-1. Go to **instagram.com** → Settings → **Accounts Center** → **Your Information and Permissions**.
+1. Go directly to **[Your Information and Permissions](https://accountscenter.instagram.com/info_and_permissions/dyi/)** (or navigate manually from Settings).
 2. Click **Download your information** → **Download or transfer information**.
 3. Select your Instagram account.
 4. Choose **Some of your information** and select **Followers and following**.
