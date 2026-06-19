@@ -1,35 +1,30 @@
 # 🕵️‍♂️ UnfollowerDetector
 
-**UnfollowerDetector** is a simple local Python web app that helps you find Instagram accounts you follow that do **not** follow you back.
+**UnfollowerDetector** is a beautiful, local Python web app that helps you find Instagram accounts you follow that do **not** follow you back.
 
-It works with your official Instagram data export, compares your followers and following lists, and shows a clean list of non-mutual follows with clickable profile links.
+It works with your official Instagram data export, compares your followers and following lists, and shows a clean, interactive dashboard of non-mutual follows with clickable profile links.
 
 ---
 
 ## ✨ Features
 
-* 🔍 Detect users who do not follow you back
-* 📁 Use Instagram export JSON files
-* 🖥️ Run locally on your computer
-* 🔗 Open each Instagram profile directly
-* ⭐ Mark users as **Whitelisted**
-* 💤 Mark users as **Inactive**
-* 🔐 No Instagram password required
-* 🚫 No automatic unfollowing
-* 🧘 Simple, privacy-friendly workflow
+* 🔍 **Smart Detection**: Instantly find users who don't follow you back.
+* 📁 **Drag & Drop Uploads**: Simply drag your downloaded Instagram `.zip` export, the `followers_and_following` folder, or the raw `.json` files directly into the app.
+* 🎨 **Premium UI**: Dark-themed, glassmorphic design that feels modern and responsive.
+* 🖥️ **100% Local**: Runs entirely on your computer. Your data never leaves your machine.
+* 🔗 **Direct Links**: Open any Instagram profile directly from the dashboard to review or unfollow.
+* ⭐ **Whitelisted**: Keep track of celebrities, brands, or friends you want to follow regardless.
+* 💤 **Inactive**: Mark abandoned accounts so they don't clutter your main list.
+* ✅ **Unfollowed**: Keep a record of users you've manually unfollowed.
+* 🔐 **No Login Required**: No Instagram password required, completely safe from bans.
 
 ---
 
 ## 📸 What It Does
 
-UnfollowerDetector compares two lists from your Instagram data export:
+UnfollowerDetector parses your official Instagram data export (`following.json` and `followers_*.json`) and calculates the exact difference. 
 
-* People who follow you
-* People you follow
-
-Then it shows the accounts that appear in your following list but not in your followers list.
-
-Each result includes a direct profile link so you can manually review the account.
+It provides an interactive dashboard where you can easily filter, search, and categorize accounts into different tabs (Unfollowers, Whitelisted, Inactive, Unfollowed).
 
 ---
 
@@ -37,9 +32,7 @@ Each result includes a direct profile link so you can manually review the accoun
 
 Your data stays on your own computer.
 
-UnfollowerDetector does **not** ask for your Instagram login details and does **not** connect to your Instagram account.
-
-It only reads the JSON files that you choose to provide from your Instagram export.
+UnfollowerDetector does **not** ask for your Instagram login details and does **not** connect to your Instagram account or use any unauthorized APIs. It strictly parses the JSON files you provide.
 
 ---
 
@@ -52,36 +45,18 @@ git clone https://github.com/YOUR_USERNAME/UnfollowerDetector.git
 cd UnfollowerDetector
 ```
 
-### 2. Create a virtual environment
+### 2. No dependencies required!
 
-#### macOS / Linux
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-#### Windows
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 3. Install requirements
-
-```bash
-pip install -r requirements.txt
-```
+UnfollowerDetector is built using only Python's standard library. You do **not** need to install any external packages or use `pip`.
 
 ---
 
 ## 🚀 Running the App
 
-Start the project with:
+Start the backend server with:
 
 ```bash
-python run.py
+python main.py
 ```
 
 Then open your browser and go to:
@@ -94,71 +69,50 @@ http://127.0.0.1:8080
 
 ## 📥 Getting Your Instagram Data
 
-To use the app, download your Instagram information in JSON format.
+To use the app, download your Instagram information:
 
-You will need the files that contain your followers and following data.
+1. Go to **instagram.com** → Settings → **Accounts Center** → **Your Information and Permissions**.
+2. Click **Download your information** → **Download or transfer information**.
+3. Select your Instagram account.
+4. Choose **Some of your information** and select **Followers and following**.
+5. Set the format to **JSON** and create the file.
 
-They are usually found inside the Instagram export under a folder related to:
-
-```txt
-connections/followers_and_following
-```
-
-The looked-after file names may include:
-
-```txt
-followers_1.json
-following.json
-```
+When the download is ready, you'll receive a `.zip` file. You can drag this exact `.zip` file directly into UnfollowerDetector!
 
 ---
 
 ## 🧭 How to Use
 
-### Option 1: Use Local Files 📁
+When you open the app, you can provide your data in three ways:
 
-Place your Instagram followers/following JSON files in the project’s `connections` directory, then run the app and scan locally.
+1. **Upload the ZIP**: Drag and drop the `.zip` file you downloaded from Instagram. The app will automatically extract what it needs.
+2. **Upload the Folder**: Extract the ZIP yourself and drag the `connections` or `followers_and_following` folder into the app.
+3. **Upload the JSON files**: Drag and drop `following.json` and `followers_1.json` together.
 
-### Option 2: Upload JSON Files ⬆️
-
-Use the app interface to upload your followers and following files directly.
-
-### Option 3: Paste JSON Content 📝
-
-Paste the JSON content manually into the app and analyze it instantly.
+Once processed, you will be taken to the dashboard.
 
 ---
 
 ## 🏷️ User Statuses
 
-You can organize detected users with statuses:
+You can organize detected users using the action buttons next to their names:
 
-### ⚪ Normal
-
-A user who does not follow you back and has not been marked yet.
+### ⚪ Normal (Unfollowers)
+Users who do not follow you back. This is the default state.
 
 ### ⭐ Whitelisted
-
-A user who does not follow you back, but you still want to keep following.
-
-Useful for:
-
-* Celebrities
-* Brands
-* Friends
-* News pages
-* Accounts you intentionally follow
+Users who don't follow you back, but you still want to follow (e.g., celebrities, brands, news pages).
 
 ### 💤 Inactive
+Users whose accounts appear to be dormant or abandoned.
 
-A user that seems inactive or abandoned.
+### ✅ Unfollowed
+Users you have manually reviewed and unfollowed on Instagram. Keeping them here gives you a record of your actions.
 
 ---
-
 
 ## ⚠️ Disclaimer
 
 This project is not affiliated with Instagram or Meta.
 
 UnfollowerDetector does not log in to Instagram, scrape data, or perform automatic unfollow actions. It only helps you analyze your own exported data and review accounts manually.
-
