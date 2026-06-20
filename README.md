@@ -43,6 +43,8 @@ UnfollowerDetector does **not** ask for your Instagram login details and does **
 
 ## 📦 Installation
 
+**Requires Python 3.7 or higher.**
+
 ### 1. Clone the repository
 
 ```bash
