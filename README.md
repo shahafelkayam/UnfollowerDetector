@@ -13,6 +13,7 @@ It works with your official Instagram data export, compares your followers and f
 ## ✨ Features
 
 * 🔍 **Smart Detection**: Instantly find users who don't follow you back.
+* 📊 **Live Ratios**: Automatically, safely, and seamlessly fetch the follower-to-following ratio of your mutuals to catch fake influencers.
 * 📁 **Drag & Drop Uploads**: Simply drag your downloaded Instagram `.zip` export, the `followers_and_following` folder, or the raw `.json` files directly into the app.
 * 🎨 **Premium UI**: Dark-themed, glassmorphic design that feels modern and responsive.
 * 🖥️ **100% Local**: Runs entirely on your computer. Your data never leaves your machine.
@@ -115,6 +116,9 @@ Users whose accounts appear to be dormant or abandoned.
 
 ### ✅ Unfollowed
 Users you have manually reviewed and unfollowed on Instagram. Keeping them here gives you a record of your actions.
+
+### 📊 Ratios (Mutual Followers)
+A dynamic leaderboard of your mutual followers, sorted by their Follower-to-Following ratio. The backend securely auto-fetches this data in the background (respecting Instagram rate limits) so you can catch accounts that might be artificially inflating their follower counts!
 
 ---
 
