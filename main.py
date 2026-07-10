@@ -2,9 +2,12 @@ import os
 import json
 import mimetypes
 import zipfile
-import io
-import base64
 import shutil
+import time
+import random
+import urllib.request
+import ssl
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -38,6 +41,110 @@ def save_status(status_data):
             json.dump(status_data, f, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"Error saving status.json: {e}")
+
+RATIOS_FILE = os.path.join(BASE_DIR, 'ratios.json')
+
+def load_ratios():
+    if not os.path.exists(RATIOS_FILE):
+        return {}
+    try:
+        with open(RATIOS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_ratios(data):
+    try:
+        with open(RATIOS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error saving ratios.json: {e}")
+
+def fetch_ig_stats(username):
+    url = f"https://www.instagram.com/api/v1/users/web_profile_info/?username={username}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+        'x-ig-app-id': '936619743392459'
+    }
+        
+    req = urllib.request.Request(url, headers=headers)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            user = data['data']['user']
+            followers = user['edge_followed_by']['count']
+            following = user['edge_follow']['count']
+            return {"followers": followers, "following": following, "timestamp": int(time.time())}
+    except urllib.error.HTTPError as e:
+        print(f"Error fetching {username}: HTTP {e.code}")
+        if e.code in [401, 403, 429]:
+            return "RATE_LIMITED"
+        return None
+    except Exception as e:
+        print(f"Error fetching {username}: {e}")
+        return None
+
+IS_FETCHING_RATIOS = False
+
+def background_fetch_ratios():
+    global IS_FETCHING_RATIOS
+    if IS_FETCHING_RATIOS:
+        return
+    IS_FETCHING_RATIOS = True
+    try:
+        data = get_relationship_data()
+        mutuals = data.get("mutuals", [])
+        ratios_data = load_ratios()
+        
+        current_time = int(time.time())
+        three_months_sec = 90 * 24 * 60 * 60
+        
+        meta = ratios_data.get("_metadata", {})
+        if current_time < meta.get("rate_limit_until", 0):
+            IS_FETCHING_RATIOS = "RATE_LIMITED"
+            return
+        
+        needs_fetch = []
+        for m in mutuals:
+            username = m['username']
+            stats = ratios_data.get(username)
+            if not stats or (current_time - stats.get('timestamp', 0) > three_months_sec):
+                needs_fetch.append(username)
+        
+        if not needs_fetch:
+            return
+            
+        random.shuffle(needs_fetch)
+        
+        for username in needs_fetch:
+            time.sleep(random.uniform(0, 30))
+            stats = fetch_ig_stats(username)
+            if stats == "RATE_LIMITED":
+                meta["rate_limit_until"] = current_time + (24 * 3600)
+                ratios_data["_metadata"] = meta
+                save_ratios(ratios_data)
+                IS_FETCHING_RATIOS = "RATE_LIMITED"
+                return
+            elif stats:
+                ratios_data[username] = stats
+                save_ratios(ratios_data)
+            else:
+                break
+                
+        # Update metadata timestamp
+        meta["last_login_fetch"] = current_time
+        ratios_data["_metadata"] = meta
+        
+        save_ratios(ratios_data)
+    except Exception as e:
+        print(f"Background fetch error: {e}")
+        IS_FETCHING_RATIOS = False
+    finally:
+        if IS_FETCHING_RATIOS != "RATE_LIMITED":
+            IS_FETCHING_RATIOS = False
 
 # Robust parser for Instagram JSON exports
 def parse_instagram_file(file_path):
@@ -152,6 +259,7 @@ def get_relationship_data():
     whitelisted = []
     inactive = []
     unfollowed = []
+    mutuals = []
 
     # Map of all following to keep track of their URLs
     following_map = {u['username']: u['href'] for u in following_list}
@@ -168,6 +276,11 @@ def get_relationship_data():
                 unfollowed.append(user_info)
             else:
                 unfollowers.append(user_info)
+        else:
+            if username in unfollowed_set:
+                unfollowed.append({"username": username, "href": href})
+            else:
+                mutuals.append({"username": username, "href": href})
 
     # Also include unfollowed users who are no longer in following (they were truly unfollowed)
     for username in unfollowed_set:
@@ -197,7 +310,8 @@ def get_relationship_data():
         "unfollowers": sorted(unfollowers, key=lambda x: x['username'].lower()),
         "whitelisted": sorted(whitelisted, key=lambda x: x['username'].lower()),
         "inactive": sorted(inactive, key=lambda x: x['username'].lower()),
-        "unfollowed": sorted(unfollowed, key=lambda x: x['username'].lower())
+        "unfollowed": sorted(unfollowed, key=lambda x: x['username'].lower()),
+        "mutuals": sorted(mutuals, key=lambda x: x['username'].lower())
     }
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -225,16 +339,51 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         # API: Status endpoint
         if path == '/api/status':
+            if not IS_FETCHING_RATIOS:
+                threading.Thread(target=background_fetch_ratios, daemon=True).start()
+
             data = get_relationship_data()
             self.send_json(data)
             return
 
+        # API: Ratios endpoint
+        if path == '/api/ratios':
+            data = get_relationship_data()
+            mutuals = data.get("mutuals", [])
+            ratios_data = load_ratios()
+            
+            result = []
+            for m in mutuals:
+                username = m['username']
+                stats = ratios_data.get(username, None)
+                if stats:
+                    followers = stats['followers']
+                    following = stats['following']
+                    ratio = following / followers if followers > 0 else following
+                    result.append({
+                        "username": username,
+                        "href": m['href'],
+                        "followers": followers,
+                        "following": following,
+                        "ratio": ratio,
+                        "timestamp": stats['timestamp']
+                    })
+                    
+            result.sort(key=lambda x: -x['ratio'])
+            self.send_json({
+                "ratios": result,
+                "is_fetching": IS_FETCHING_RATIOS
+            })
+            return
+
         # API: Has-data endpoint
         if path == '/api/has-data':
-            has_data = any(
-                f.endswith('.json') for f in os.listdir(CONNECTIONS_DIR)
-                if os.path.isfile(os.path.join(CONNECTIONS_DIR, f))
-            )
+            has_data = False
+            if os.path.exists(CONNECTIONS_DIR):
+                for f in os.listdir(CONNECTIONS_DIR):
+                    if f.endswith('.json'):
+                        has_data = True
+                        break
             self.send_json({"has_data": has_data})
             return
 

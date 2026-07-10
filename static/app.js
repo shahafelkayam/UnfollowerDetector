@@ -50,9 +50,13 @@ function cacheDom() {
     dom.badgeWhitelisted = $('badge-whitelisted');
     dom.badgeInactive = $('badge-inactive');
     dom.badgeUnfollowed = $('badge-unfollowed');
+    dom.badgeRatios = $('badge-ratios');
+    dom.fetchStatusBadge = $('fetch-status-badge');
+    dom.searchWrap = document.querySelector('.search-wrap');
 
     dom.tabBtns = document.querySelectorAll('.tab');
     dom.searchInput = $('search-input');
+    
     dom.usersGrid = $('users-grid');
     dom.listLoader = $('list-loader');
     dom.emptyState = $('empty-state');
@@ -501,6 +505,54 @@ function hideProgress() {
     dom.progressBarFill.style.width = '0%';
 }
 
+let ratioPollInterval = null;
+
+function updateFetchStatus(isFetching) {
+    if (!dom.fetchStatusBadge) return;
+    
+    if (isFetching === "RATE_LIMITED") {
+        if (state.activeTab === 'ratios') dom.fetchStatusBadge.style.display = 'flex';
+        dom.fetchStatusBadge.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> <span>Rate limit reached, pausing for 24h</span>';
+        if (ratioPollInterval) {
+            clearInterval(ratioPollInterval);
+            ratioPollInterval = null;
+        }
+    } else if (isFetching) {
+        if (state.activeTab === 'ratios') dom.fetchStatusBadge.style.display = 'flex';
+        dom.fetchStatusBadge.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Fetching live data...';
+        
+        if (!ratioPollInterval) {
+            ratioPollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/ratios');
+                    if (res.ok) {
+                        const ratioData = await res.json();
+                        state.ratios = ratioData.ratios;
+                        updateStats();
+                        if (state.activeTab === 'ratios') renderList();
+                        
+                        if (!ratioData.is_fetching) {
+                            updateFetchStatus(false);
+                        }
+                    }
+                } catch (e) {}
+            }, 3000);
+        }
+    } else {
+        if (state.activeTab === 'ratios') dom.fetchStatusBadge.style.display = 'flex';
+        dom.fetchStatusBadge.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--emerald, #10b981)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Up to date';
+        
+        if (ratioPollInterval) {
+            clearInterval(ratioPollInterval);
+            ratioPollInterval = null;
+        }
+        
+        setTimeout(() => {
+            if (!ratioPollInterval && dom.fetchStatusBadge) dom.fetchStatusBadge.style.display = 'none';
+        }, 5000);
+    }
+}
+
 // ---- Dashboard Data ----
 async function fetchData() {
     showLoader();
@@ -516,6 +568,16 @@ async function fetchData() {
         state.inactive = data.inactive;
         state.unfollowed = data.unfollowed;
 
+        // Fetch ratios
+        try {
+            const resRatios = await fetch('/api/ratios');
+            if (resRatios.ok) {
+                const ratioData = await resRatios.json();
+                state.ratios = ratioData.ratios;
+                updateFetchStatus(ratioData.is_fetching);
+            }
+        } catch (e) { console.error("Error fetching ratios", e); }
+
         updateStats();
         renderList();
     } catch (err) {
@@ -526,8 +588,19 @@ async function fetchData() {
 
 function switchTab(tab) {
     dom.tabBtns.forEach(b => b.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+    const activeBtn = document.querySelector(`.tab[data-tab="${tab}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
     state.activeTab = tab;
+    
+    dom.usersGrid.style.display = 'grid'; // Uses grid from css
+    dom.searchWrap.style.display = 'flex';
+    
+    if (tab === 'ratios' && (ratioPollInterval || dom.fetchStatusBadge.innerHTML.includes('Up to date') || dom.fetchStatusBadge.innerHTML.includes('pausing for 24h'))) {
+        dom.fetchStatusBadge.style.display = 'flex';
+    } else {
+        dom.fetchStatusBadge.style.display = 'none';
+    }
+    
     renderList();
 }
 
@@ -544,6 +617,7 @@ function updateStats() {
     dom.badgeWhitelisted.textContent = c.whitelisted;
     dom.badgeInactive.textContent = c.inactive;
     dom.badgeUnfollowed.textContent = c.unfollowed;
+    if (dom.badgeRatios) dom.badgeRatios.textContent = state.ratios ? state.ratios.length : 0;
 }
 
 // ---- Render List ----
@@ -571,6 +645,8 @@ function renderList() {
             showEmptyState('No whitelisted accounts', 'Whitelist users you want to keep following even though they don\'t follow back.');
         } else if (state.activeTab === 'unfollowed') {
             showEmptyState('No unfollowed accounts', 'Mark users here after you manually unfollow them on Instagram.');
+        } else if (state.activeTab === 'ratios') {
+            showEmptyState('No mutuals', 'You do not have any mutual followers to calculate ratios for.');
         } else {
             showEmptyState('No inactive accounts', 'Mark users as inactive when their accounts appear dormant.');
         }
@@ -594,7 +670,31 @@ function createUserCard(user) {
     const initials = user.username.slice(0, 2);
 
     let actionsHtml;
-    if (state.activeTab === 'unfollowers') {
+    if (state.activeTab === 'ratios') {
+        const r = user.ratio;
+        const rFixed = r.toFixed(2);
+        let badgeStyle = `color: var(--text-secondary); font-size: 15px;`;
+        
+        if (r >= 1 && r < 1.5) {
+            badgeStyle = `color: #facc15; font-size: 15px;`;
+        } else if (r >= 1.5 && r < 2) {
+            badgeStyle = `color: #f97316; font-size: 15px;`;
+        } else if (r >= 2 && r <= 3) {
+            badgeStyle = `color: var(--rose); font-size: 15px;`;
+        } else if (r > 3) {
+            badgeStyle = `color: #fff; font-size: 15px; font-weight: bold; background: var(--rose); padding: 4px 10px; border-radius: 8px; animation: pulseGlowRed 2s infinite;`;
+        }
+        
+        actionsHtml = `
+            <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 13px; margin-right: 12px;">
+                <strong style="${badgeStyle}">${rFixed}x Ratio</strong>
+                <span style="color: var(--text-muted); margin-top: 4px;">${user.following.toLocaleString()} / ${user.followers.toLocaleString()}</span>
+            </div>
+            <button class="action-btn btn-unfollowed" title="Mark as just unfollowed" onclick="handleAction('${user.username}','unfollowed', this)">
+                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+        `;
+    } else if (state.activeTab === 'unfollowers') {
         actionsHtml = `
             <button class="action-btn btn-whitelist" title="Whitelist — keep following peacefully" onclick="handleAction('${user.username}','whitelist', this)">
                 <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -620,7 +720,6 @@ function createUserCard(user) {
                     <span>${user.username}</span>
                     <svg class="user-ext-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
-                <span class="user-link-hint">Click to visit profile</span>
             </div>
         </div>
         <div class="user-actions">${actionsHtml}</div>`;

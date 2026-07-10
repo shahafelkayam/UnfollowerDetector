@@ -1,6 +1,12 @@
 # Instagram Data
 connections/
 status.json
+ratios.json
+config.json
+
+# OS Files
+.DS_Store
+Thumbs.db
 
 # Python
 __pycache__/
